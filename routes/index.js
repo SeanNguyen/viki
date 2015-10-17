@@ -11,10 +11,58 @@ router.get('/', function(req, res) {
     request(url, function(error, response, html){
         if(!error){
             var $ = cheerio.load(html);
-            console.log($('.c-item a').attr('href'));
-			res.send(html);
+
+            //get all items that need to analyze
+            var items = [];
+
+            $('.item').each(function() {
+            	var url = extractUrlFromItem(this, $);            	
+				items.push(url);
+            });
+            $('.c-item').each(function() {
+				var url = extractUrlFromItem(this, $);            	
+				items.push(url);
+            });
+
+            var repeatCount = { videos: {}, channels: {}, celebrities: {} };
+
+            for (var i = items.length - 1; i >= 0; i--) {
+            	var url = items[i];
+            	if(!url) {
+	            	continue;
+	            }
+            	if(url.indexOf('tv/') > -1) {
+            		var id = url.substring(url.indexOf('tv/'));
+            		repeatCount.channels[id] = (repeatCount.channels[id] != null) ? repeatCount.channels[id] + 1 : 1;
+            	} else if(url.indexOf('videos/') > -1) {
+            		var id = url.substring(url.indexOf('videos/'));
+            		repeatCount.videos[id] = (repeatCount.videos[id] != null) ? repeatCount.videos[id] + 1 : 1;
+            	} else if(url.indexOf('celebrities/') > -1) {
+					var id = url.substring(url.indexOf('celebrities/'));
+					repeatCount.celebrities[id] = (repeatCount.celebrities[id] != null) ? repeatCount.celebrities[id] + 1 : 1;
+            	}
+            };
+
+			res.send(repeatCount);
         }
     })
 });
+
+function extractUrlFromItem(htmlItem, $) {
+	// console.log(htmlItem);
+	var urls = {};
+	$(htmlItem).find('a').each(function() {
+		var url = $(this).attr('href');
+		urls[url] = (urls[url] != null) ? urls[url] + 1 : 1;
+	});
+
+	var dominatedUrl;
+	for (var key in urls) {
+		if(!dominatedUrl || urls[key] > urls[dominatedUrl]) {
+			dominatedUrl = key;
+		}
+	}
+	return dominatedUrl;
+}
 
 module.exports = router;
